@@ -25,9 +25,15 @@ npx netlify dev
 ## Connect Supabase
 
 1. Create a Supabase project.
-2. Open **SQL Editor**, paste [supabase/schema.sql](supabase/schema.sql), and run it. The script is safe to rerun when upgrading an existing project.
-3. Copy the project URL and anon key from **Project Settings > API** into `.env`.
-4. Restart the local server.
+2. Connect `PallabPaul/fitness-app` under **Project Settings > Integrations > GitHub**.
+3. Set **Working directory** to `.`, **Production branch** to `main`, and enable **Deploy to production**.
+4. Supabase will apply new files in [supabase/migrations](supabase/migrations) when they reach `main`.
+5. Copy the project URL and publishable/anon key from **Project Settings > API** into `.env`.
+6. Restart the local server.
+
+If GitHub deployment is unavailable, open **SQL Editor**, paste [supabase/schema.sql](supabase/schema.sql), and run it manually. Do not both run the SQL manually and enable the initial migration at the same time unless you intend Supabase to reconcile the idempotent setup.
+
+For future database changes, add a new timestamped SQL file under `supabase/migrations/`; do not edit an already-applied migration.
 
 This is a single-user personal app. Its password gate is intentionally simple and is not strong authentication. The database policies allow the anon key to read and write, so do not use this schema for sensitive health records or a public multi-user product.
 
