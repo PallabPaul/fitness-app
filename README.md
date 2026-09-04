@@ -6,6 +6,8 @@ Features include day-by-day history, searchable food presets with scalable servi
 
 Saved meals and workouts can be reopened from their pencil buttons, edited, and updated without creating duplicate entries. Trash buttons delete entries after confirmation.
 
+Body-weight measurements are stored by calendar day and do not overwrite other days. Recording again on the same day updates that day's measurement. The separate profile weight is used only for calorie and macro goal calculations. Exercise names can be typed freely; the activity preset controls only the calorie estimate.
+
 ## Run locally
 
 ```bash

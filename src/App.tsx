@@ -39,6 +39,7 @@ import {
   saveWeight,
   saveWorkout,
   updateMeal,
+  updateWeight,
   updateWorkout,
 } from "./data";
 import {
@@ -138,6 +139,15 @@ function App() {
   const dailyWeights = weights.filter((entry) =>
     sameDay(entry.recordedAt, selectedDay),
   );
+  const selectedDayEnd = new Date(selectedDay);
+  selectedDayEnd.setHours(23, 59, 59, 999);
+  const effectiveWeight = weights
+    .filter((entry) => new Date(entry.recordedAt) <= selectedDayEnd)
+    .sort(
+      (left, right) =>
+        new Date(right.recordedAt).getTime() -
+        new Date(left.recordedAt).getTime(),
+    )[0]?.weight ?? profile.weightLb;
   const totals = dailyMeals.reduce(
     (sum, meal) => ({
       calories: sum.calories + meal.calories,
@@ -284,18 +294,25 @@ function App() {
   async function addWeight(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    const entry = {
-      id: crypto.randomUUID(),
-      weight: Number(form.get("weight")),
-      recordedAt: entryTime(selectedDay),
-    };
-    const nextProfile = { ...profile, weightLb: entry.weight };
+    const existing = dailyWeights[0];
+    const entry = existing
+      ? { ...existing, weight: Number(form.get("weight")) }
+      : {
+          id: crypto.randomUUID(),
+          weight: Number(form.get("weight")),
+          recordedAt: entryTime(selectedDay),
+        };
     try {
-      await saveWeight(entry, data);
-      await saveProfile(nextProfile, { ...data, weights: [entry, ...weights] });
-      setWeights((current) => [entry, ...current]);
-      setProfile(nextProfile);
-      closeWithToast("Weight and goals updated");
+      if (existing) {
+        await updateWeight(entry, data);
+        setWeights((current) =>
+          current.map((item) => (item.id === entry.id ? entry : item)),
+        );
+      } else {
+        await saveWeight(entry, data);
+        setWeights((current) => [entry, ...current]);
+      }
+      closeWithToast(existing ? "Weight updated for this day" : "Weight recorded for this day");
     } catch {
       setToast("Weight could not be saved");
     }
@@ -638,11 +655,8 @@ function App() {
                 </div>
               ) : (
                 <div>
-                  <strong>
-                    {profile.weightLb}
-                    <small> lb</small>
-                  </strong>
-                  <p>Current profile weight</p>
+                  <strong>—</strong>
+                  <p>No weight recorded {dayLabel.toLowerCase()}</p>
                 </div>
               )}
               <button onClick={() => setModal("weight")}>Record weight</button>
@@ -683,7 +697,7 @@ function App() {
               <WorkoutForm
                 draft={workoutDraft}
                 editing={editingWorkout}
-                weightLb={profile.weightLb}
+                weightLb={effectiveWeight}
                 onSave={addWorkout}
                 onDescribe={() => setModal("describeExercise")}
               />
@@ -702,7 +716,7 @@ function App() {
                     min="50"
                     max="1000"
                     step="0.1"
-                    defaultValue={profile.weightLb}
+                    defaultValue={dailyWeights[0]?.weight ?? effectiveWeight}
                     required
                     autoFocus
                   />
@@ -982,6 +996,9 @@ function WorkoutForm({
     ? exercisePresets.findIndex((preset) => preset.name === (editing?.name || draft?.presetName))
     : 0;
   const [presetIndex, setPresetIndex] = useState(Math.max(draftPreset, 0));
+  const [exerciseName, setExerciseName] = useState(
+    editing?.name || draft?.presetName || exercisePresets[Math.max(draftPreset, 0)].name,
+  );
   const [minutes, setMinutes] = useState(editing?.duration ?? draft?.duration ?? 30);
   const [calorieOverride, setCalorieOverride] = useState<number | null>(editing?.caloriesBurned ?? null);
   const preset = exercisePresets[presetIndex];
@@ -992,7 +1009,7 @@ function WorkoutForm({
     const form = new FormData(event.currentTarget);
     onSave({
       type: preset.type,
-      name: preset.name,
+      name: exerciseName,
       duration: minutes,
       distance: Number(form.get("distance")) || undefined,
       notes: String(form.get("notes") || ""),
@@ -1022,10 +1039,24 @@ function WorkoutForm({
         </div>
       )}
       <label>
-        Exercise
+        Exercise name
+        <input
+          value={exerciseName}
+          onChange={(event) => setExerciseName(event.target.value)}
+          placeholder="Morning run, leg day, basketball…"
+          required
+        />
+      </label>
+      <label>
+        Activity type for calorie estimate
         <select
           value={presetIndex}
-          onChange={(event) => setPresetIndex(Number(event.target.value))}
+          onChange={(event) => {
+            const nextIndex = Number(event.target.value);
+            setPresetIndex(nextIndex);
+            setExerciseName(exercisePresets[nextIndex].name);
+            setCalorieOverride(null);
+          }}
         >
           {exercisePresets.map((exercise, index) => (
             <option key={exercise.name} value={index}>
@@ -1337,7 +1368,7 @@ function ProfileForm({
       )}
       <div className="form-grid">
         <label>
-          Weight (lb)
+          Goal calculation weight (lb)
           <input
             type="number"
             min="50"

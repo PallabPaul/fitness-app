@@ -78,6 +78,12 @@ export async function saveWeight(entry: WeightEntry, current: FitnessData) {
   if (error) throw error
 }
 
+export async function updateWeight(entry: WeightEntry, current: FitnessData) {
+  if (!supabase) return saveLocal({ ...current, weights: current.weights.map((item) => item.id === entry.id ? entry : item) })
+  const { error } = await supabase.from('weight_entries').update({ weight: entry.weight }).eq('id', entry.id)
+  if (error) throw error
+}
+
 export async function saveProfile(profile: Profile, current: FitnessData) {
   if (!supabase) return saveLocal({ ...current, profile })
   const { error } = await supabase.from('profiles').upsert({ id: 1, weight_lb: profile.weightLb, height_ft: profile.heightFt, height_in: profile.heightIn, age: profile.age, sex: profile.sex, activity: profile.activity, weekly_loss_lb: profile.weeklyLossLb, goal_calories: profile.customGoals?.calories ?? null, macro_protein: profile.customGoals?.protein ?? null, macro_carbs: profile.customGoals?.carbs ?? null, macro_fat: profile.customGoals?.fat ?? null })
