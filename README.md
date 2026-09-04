@@ -39,6 +39,7 @@ This is a single-user personal app. Its password gate is intentionally simple an
 - Exercise calories use standard MET estimates and your current profile weight. You can edit the burn before saving or restore the estimate. They are useful estimates, not measurements from a heart-rate monitor.
 - **Describe with AI** inside **Log exercise** can interpret an activity, duration, distance, and intensity, then opens the normal editable workout form.
 - The built-in food list covers common foods and supports custom manual entries. AI estimates can come from a photo or written meal description, and every food name and nutrition value remains editable before saving.
+- Meal and exercise descriptions support microphone dictation in compatible browsers. HTTPS is required outside local development for microphone permission.
 
 ## Deploy to Netlify
 

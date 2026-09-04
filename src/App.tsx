@@ -9,11 +9,13 @@ import {
   Footprints,
   LogOut,
   MessageSquareText,
+  Mic,
   Pencil,
   Plus,
   Scale,
   Settings2,
   Sparkles,
+  Square,
   Utensils,
   X,
 } from "lucide-react";
@@ -915,19 +917,12 @@ function DescribeMealForm({
       <p className="form-note">
         Include amounts, ingredients, cooking method, and sauces when you can.
       </p>
-      <label>
-        Meal description
-        <textarea
-          rows={6}
-          minLength={3}
-          maxLength={2000}
-          value={description}
-          onChange={(event) => setDescription(event.target.value)}
-          placeholder="Two scrambled eggs cooked in a teaspoon of butter, two slices of wheat toast, and a medium banana"
-          required
-          autoFocus
-        />
-      </label>
+      <VoiceDescriptionInput
+        label="Meal description"
+        value={description}
+        onChange={setDescription}
+        placeholder="Two scrambled eggs cooked in a teaspoon of butter, two slices of wheat toast, and a medium banana"
+      />
       <div className="ai-note">
         <Sparkles size={17} />
         <span>The result opens as an editable estimate before it is saved.</span>
@@ -1082,19 +1077,12 @@ function DescribeExerciseForm({
       <p className="form-note">
         Include the activity, duration, distance, and intensity when you can.
       </p>
-      <label>
-        Exercise description
-        <textarea
-          rows={6}
-          minLength={3}
-          maxLength={2000}
-          value={description}
-          onChange={(event) => setDescription(event.target.value)}
-          placeholder="Ran 3 miles at an easy pace in about 32 minutes"
-          required
-          autoFocus
-        />
-      </label>
+      <VoiceDescriptionInput
+        label="Exercise description"
+        value={description}
+        onChange={setDescription}
+        placeholder="Ran 3 miles at an easy pace in about 32 minutes"
+      />
       <div className="ai-note">
         <Sparkles size={17} />
         <span>The result opens as an editable estimate before it is saved.</span>
@@ -1103,6 +1091,122 @@ function DescribeExerciseForm({
         {loading ? "Estimating exercise…" : "Estimate exercise"}
       </button>
     </form>
+  );
+}
+
+type SpeechResult = { 0: { transcript: string } };
+type SpeechEvent = { results: ArrayLike<SpeechResult> };
+type SpeechRecognitionInstance = {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onresult: ((event: SpeechEvent) => void) | null;
+  onerror: (() => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+  abort: () => void;
+};
+type SpeechRecognitionConstructor = new () => SpeechRecognitionInstance;
+
+function VoiceDescriptionInput({
+  label,
+  value,
+  onChange,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+}) {
+  const [listening, setListening] = useState(false);
+  const [voiceError, setVoiceError] = useState("");
+  const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
+  const speechWindow = window as unknown as {
+    SpeechRecognition?: SpeechRecognitionConstructor;
+    webkitSpeechRecognition?: SpeechRecognitionConstructor;
+  };
+  const SpeechRecognition =
+    speechWindow.SpeechRecognition || speechWindow.webkitSpeechRecognition;
+
+  useEffect(() => () => recognitionRef.current?.abort(), []);
+
+  function toggleVoice() {
+    if (listening) {
+      recognitionRef.current?.stop();
+      return;
+    }
+    if (!SpeechRecognition) return;
+    const initialText = value.trim();
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = "en-US";
+    recognition.onresult = (event) => {
+      const spoken = Array.from(event.results)
+        .map((result) => result[0]?.transcript || "")
+        .join(" ")
+        .trim();
+      onChange([initialText, spoken].filter(Boolean).join(" "));
+    };
+    recognition.onerror = () => {
+      setVoiceError(
+        "Voice input stopped. Check microphone permission and try again.",
+      );
+      setListening(false);
+    };
+    recognition.onend = () => setListening(false);
+    recognitionRef.current = recognition;
+    setVoiceError("");
+    setListening(true);
+    recognition.start();
+  }
+
+  return (
+    <label>
+      {label}
+      <div className="voice-input">
+        <textarea
+          rows={6}
+          minLength={3}
+          maxLength={2000}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          placeholder={placeholder}
+          required
+          autoFocus
+        />
+        <button
+          type="button"
+          className={listening ? "voice-button listening" : "voice-button"}
+          onClick={toggleVoice}
+          disabled={!SpeechRecognition}
+          aria-pressed={listening}
+          title={
+            SpeechRecognition
+              ? listening
+                ? "Stop listening"
+                : "Speak description"
+              : "Voice input is not supported in this browser"
+          }
+        >
+          {listening ? <Square size={16} /> : <Mic size={18} />}
+          {listening ? "Stop" : "Speak"}
+        </button>
+      </div>
+      <small
+        className={voiceError ? "voice-status error" : "voice-status"}
+        role="status"
+      >
+        {voiceError ||
+          (listening
+            ? "Listening… speak naturally"
+            : !SpeechRecognition
+              ? "Voice input is unavailable in this browser"
+              : "")}
+      </small>
+    </label>
   );
 }
 
