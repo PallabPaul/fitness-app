@@ -16,6 +16,7 @@ import {
   Settings2,
   Sparkles,
   Square,
+  Trash2,
   Utensils,
   X,
 } from "lucide-react";
@@ -29,6 +30,8 @@ import {
   type ExerciseEstimate,
 } from "./analyzeExercise";
 import {
+  deleteMeal,
+  deleteWorkout,
   isSupabaseConfigured,
   loadFitnessData,
   saveMeal,
@@ -198,6 +201,28 @@ function App() {
     setWorkoutDraft(null);
     setEditingWorkout(workout);
     setModal("workout");
+  }
+
+  async function removeMeal(meal: Meal) {
+    if (!window.confirm(`Delete ${meal.name}? This cannot be undone.`)) return;
+    try {
+      await deleteMeal(meal.id, data);
+      setMeals((current) => current.filter((item) => item.id !== meal.id));
+      setToast("Meal deleted");
+    } catch {
+      setToast("Meal could not be deleted");
+    }
+  }
+
+  async function removeWorkout(workout: Workout) {
+    if (!window.confirm(`Delete ${workout.name}? This cannot be undone.`)) return;
+    try {
+      await deleteWorkout(workout.id, data);
+      setWorkouts((current) => current.filter((item) => item.id !== workout.id));
+      setToast("Workout deleted");
+    } catch {
+      setToast("Workout could not be deleted");
+    }
   }
 
   async function addMeal(values: Omit<Meal, "id" | "eatenAt">) {
@@ -538,6 +563,9 @@ function App() {
                 <button className="entry-edit" onClick={() => openMealEdit(meal)} title={`Edit ${meal.name}`}>
                   <Pencil size={15} />
                 </button>
+                <button className="entry-delete" onClick={() => void removeMeal(meal)} title={`Delete ${meal.name}`}>
+                  <Trash2 size={15} />
+                </button>
               </div>
             ))}
           </Panel>
@@ -575,6 +603,9 @@ function App() {
                 </b>
                 <button className="entry-edit" onClick={() => openWorkoutEdit(workout)} title={`Edit ${workout.name}`}>
                   <Pencil size={15} />
+                </button>
+                <button className="entry-delete" onClick={() => void removeWorkout(workout)} title={`Delete ${workout.name}`}>
+                  <Trash2 size={15} />
                 </button>
               </div>
             ))}
