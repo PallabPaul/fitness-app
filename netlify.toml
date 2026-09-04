@@ -1,0 +1,19 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+  functions = "netlify/functions"
+
+[[redirects]]
+  from = "/api/analyze-meal"
+  to = "/.netlify/functions/analyze-meal"
+  status = 200
+
+[[redirects]]
+  from = "/api/analyze-exercise"
+  to = "/.netlify/functions/analyze-exercise"
+  status = 200
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
