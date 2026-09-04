@@ -4,7 +4,7 @@ A deliberately small personal tracker for calories and macros, running and weigh
 
 Features include day-by-day history, searchable food presets with scalable serving sizes, exercise calorie estimates, and personal calorie/macro goals based on weight, height, age, sex, activity, and target loss rate.
 
-Saved meals and workouts can be reopened from their pencil buttons, edited, and updated without creating duplicate entries. The login screen uses original anime power-training artwork in the app's orange, blue, and yellow theme.
+Saved meals and workouts can be reopened from their pencil buttons, edited, and updated without creating duplicate entries.
 
 ## Run locally
 
