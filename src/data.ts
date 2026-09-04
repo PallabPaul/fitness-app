@@ -42,9 +42,21 @@ export async function saveMeal(meal: Meal, current: FitnessData) {
   if (error) throw error
 }
 
+export async function updateMeal(meal: Meal, current: FitnessData) {
+  if (!supabase) return saveLocal({ ...current, meals: current.meals.map((item) => item.id === meal.id ? meal : item) })
+  const { error } = await supabase.from('meals').update({ name: meal.name, calories: meal.calories, protein: meal.protein, carbs: meal.carbs, fat: meal.fat }).eq('id', meal.id)
+  if (error) throw error
+}
+
 export async function saveWorkout(workout: Workout, current: FitnessData) {
   if (!supabase) return saveLocal({ ...current, workouts: [workout, ...current.workouts] })
   const { error } = await supabase.from('workouts').insert({ id: workout.id, type: workout.type, name: workout.name, duration: workout.duration, distance: workout.distance, notes: workout.notes, calories_burned: workout.caloriesBurned, completed_at: workout.completedAt })
+  if (error) throw error
+}
+
+export async function updateWorkout(workout: Workout, current: FitnessData) {
+  if (!supabase) return saveLocal({ ...current, workouts: current.workouts.map((item) => item.id === workout.id ? workout : item) })
+  const { error } = await supabase.from('workouts').update({ type: workout.type, name: workout.name, duration: workout.duration, distance: workout.distance, notes: workout.notes, calories_burned: workout.caloriesBurned }).eq('id', workout.id)
   if (error) throw error
 }
 

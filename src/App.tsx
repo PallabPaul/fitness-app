@@ -9,6 +9,7 @@ import {
   Footprints,
   LogOut,
   MessageSquareText,
+  Pencil,
   Plus,
   Scale,
   Settings2,
@@ -32,6 +33,8 @@ import {
   saveProfile,
   saveWeight,
   saveWorkout,
+  updateMeal,
+  updateWorkout,
 } from "./data";
 import {
   calculateGoals,
@@ -100,6 +103,8 @@ function App() {
   const [toast, setToast] = useState("");
   const [mealDraft, setMealDraft] = useState<MealEstimate | null>(null);
   const [workoutDraft, setWorkoutDraft] = useState<ExerciseEstimate | null>(null);
+  const [editingMeal, setEditingMeal] = useState<Meal | null>(null);
+  const [editingWorkout, setEditingWorkout] = useState<Workout | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -172,14 +177,40 @@ function App() {
   }
   function openManualMeal() {
     setMealDraft(null);
+    setEditingMeal(null);
     setModal("meal");
   }
   function openManualWorkout() {
     setWorkoutDraft(null);
+    setEditingWorkout(null);
+    setModal("workout");
+  }
+
+  function openMealEdit(meal: Meal) {
+    setMealDraft(null);
+    setEditingMeal(meal);
+    setModal("meal");
+  }
+
+  function openWorkoutEdit(workout: Workout) {
+    setWorkoutDraft(null);
+    setEditingWorkout(workout);
     setModal("workout");
   }
 
   async function addMeal(values: Omit<Meal, "id" | "eatenAt">) {
+    if (editingMeal) {
+      const meal = { ...editingMeal, ...values };
+      try {
+        await updateMeal(meal, data);
+        setMeals((current) => current.map((item) => item.id === meal.id ? meal : item));
+        setEditingMeal(null);
+        closeWithToast("Meal updated");
+      } catch {
+        setToast("Meal could not be updated");
+      }
+      return;
+    }
     const meal = {
       ...values,
       id: crypto.randomUUID(),
@@ -196,6 +227,18 @@ function App() {
   }
 
   async function addWorkout(values: Omit<Workout, "id" | "completedAt">) {
+    if (editingWorkout) {
+      const workout = { ...editingWorkout, ...values };
+      try {
+        await updateWorkout(workout, data);
+        setWorkouts((current) => current.map((item) => item.id === workout.id ? workout : item));
+        setEditingWorkout(null);
+        closeWithToast("Workout updated");
+      } catch {
+        setToast("Workout could not be updated");
+      }
+      return;
+    }
     const workout = {
       ...values,
       id: crypto.randomUUID(),
@@ -490,6 +533,9 @@ function App() {
                   {meal.calories}
                   <small> kcal</small>
                 </b>
+                <button className="entry-edit" onClick={() => openMealEdit(meal)} title={`Edit ${meal.name}`}>
+                  <Pencil size={15} />
+                </button>
               </div>
             ))}
           </Panel>
@@ -525,6 +571,9 @@ function App() {
                   {workout.caloriesBurned}
                   <small> kcal</small>
                 </b>
+                <button className="entry-edit" onClick={() => openWorkoutEdit(workout)} title={`Edit ${workout.name}`}>
+                  <Pencil size={15} />
+                </button>
               </div>
             ))}
           </Panel>
@@ -590,7 +639,8 @@ function App() {
             </button>
             {modal === "meal" && (
               <MealForm
-                draft={mealDraft}
+                draft={editingMeal || mealDraft}
+                editing={Boolean(editingMeal)}
                 onSave={addMeal}
                 onScan={() => setModal("photo")}
                 onDescribe={() => setModal("describe")}
@@ -599,6 +649,7 @@ function App() {
             {modal === "workout" && (
               <WorkoutForm
                 draft={workoutDraft}
+                editing={editingWorkout}
                 weightLb={profile.weightLb}
                 onSave={addWorkout}
                 onDescribe={() => setModal("describeExercise")}
@@ -690,11 +741,13 @@ function App() {
 
 function MealForm({
   draft,
+  editing,
   onSave,
   onScan,
   onDescribe,
 }: {
   draft: MealEstimate | null;
+  editing: boolean;
   onSave: (meal: Omit<Meal, "id" | "eatenAt">) => void;
   onScan: () => void;
   onDescribe: () => void;
@@ -745,17 +798,19 @@ function MealForm({
     <form className="entry-form" onSubmit={submit}>
       <p className="eyebrow">Nutrition</p>
       <div className="meal-form-title">
-        <h2>{draft ? "Review meal estimate" : "Find or add food"}</h2>
-        <div className="nested-ai-actions">
-          <button type="button" onClick={onScan}>
-            <Camera size={15} /> Scan food
-          </button>
-          <button type="button" onClick={onDescribe}>
-            <MessageSquareText size={15} /> Describe with AI
-          </button>
-        </div>
+        <h2>{editing ? "Edit meal" : draft ? "Review meal estimate" : "Find or add food"}</h2>
+        {!editing && (
+          <div className="nested-ai-actions">
+            <button type="button" onClick={onScan}>
+              <Camera size={15} /> Scan food
+            </button>
+            <button type="button" onClick={onDescribe}>
+              <MessageSquareText size={15} /> Describe with AI
+            </button>
+          </div>
+        )}
       </div>
-      {draft && (
+      {draft && !editing && (
         <div className="ai-note ai-review-note">
           <Sparkles size={17} />
           <span>
@@ -835,7 +890,7 @@ function MealForm({
         />
       </div>
       <button type="submit" className="submit-button">
-        Save meal
+        {editing ? "Update meal" : "Save meal"}
       </button>
     </form>
   );
@@ -886,21 +941,23 @@ function DescribeMealForm({
 
 function WorkoutForm({
   draft,
+  editing,
   weightLb,
   onSave,
   onDescribe,
 }: {
   draft: ExerciseEstimate | null;
+  editing: Workout | null;
   weightLb: number;
   onSave: (workout: Omit<Workout, "id" | "completedAt">) => void;
   onDescribe: () => void;
 }) {
-  const draftPreset = draft
-    ? exercisePresets.findIndex((preset) => preset.name === draft.presetName)
+  const draftPreset = editing || draft
+    ? exercisePresets.findIndex((preset) => preset.name === (editing?.name || draft?.presetName))
     : 0;
   const [presetIndex, setPresetIndex] = useState(Math.max(draftPreset, 0));
-  const [minutes, setMinutes] = useState(draft?.duration ?? 30);
-  const [calorieOverride, setCalorieOverride] = useState<number | null>(null);
+  const [minutes, setMinutes] = useState(editing?.duration ?? draft?.duration ?? 30);
+  const [calorieOverride, setCalorieOverride] = useState<number | null>(editing?.caloriesBurned ?? null);
   const preset = exercisePresets[presetIndex];
   const estimatedCalories = estimateExerciseCalories(preset.met, minutes, weightLb);
   const calories = calorieOverride ?? estimatedCalories;
@@ -920,14 +977,16 @@ function WorkoutForm({
     <form className="entry-form" onSubmit={submit}>
       <p className="eyebrow">Training</p>
       <div className="meal-form-title">
-        <h2>{draft ? "Review exercise estimate" : "Log exercise"}</h2>
-        <div className="nested-ai-actions">
-          <button type="button" onClick={onDescribe}>
-            <MessageSquareText size={15} /> Describe with AI
-          </button>
-        </div>
+        <h2>{editing ? "Edit exercise" : draft ? "Review exercise estimate" : "Log exercise"}</h2>
+        {!editing && (
+          <div className="nested-ai-actions">
+            <button type="button" onClick={onDescribe}>
+              <MessageSquareText size={15} /> Describe with AI
+            </button>
+          </div>
+        )}
       </div>
-      {draft && (
+      {draft && !editing && (
         <div className="ai-note ai-review-note">
           <Sparkles size={17} />
           <span>
@@ -967,7 +1026,7 @@ function WorkoutForm({
             type="number"
             min="0"
             step="0.1"
-            defaultValue={draft?.distance ?? undefined}
+            defaultValue={editing?.distance ?? draft?.distance ?? undefined}
           />
         </label>
       </div>
@@ -995,10 +1054,10 @@ function WorkoutForm({
       </div>
       <label>
         Notes
-        <textarea name="notes" rows={3} placeholder="Optional notes" />
+        <textarea name="notes" rows={3} placeholder="Optional notes" defaultValue={editing?.notes} />
       </label>
       <button className="submit-button" type="submit">
-        Save workout
+        {editing ? "Update workout" : "Save workout"}
       </button>
     </form>
   );

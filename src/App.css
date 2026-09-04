@@ -66,3 +66,10 @@ footer { background:var(--ink); color:#dbe2f0; border-top:4px solid var(--orange
 	.modal-backdrop{align-items:end;padding:0}.modal{width:100%;max-height:92svh;padding:32px 18px calc(22px + env(safe-area-inset-bottom));box-shadow:0 -6px 0 var(--orange);border-width:3px 0 0}.modal-close{top:14px;right:14px;width:42px;height:42px}.modal h2{font-size:30px;padding-right:38px}.entry-form{gap:16px}.form-grid{gap:10px}.nested-ai-actions{display:grid;grid-template-columns:1fr 1fr}.meal-form-title button{min-height:44px;padding:0 8px}.submit-button{min-height:52px;position:sticky;bottom:0;z-index:2}.food-results{max-height:280px;overflow-y:auto}.burn-estimate{grid-template-columns:30px minmax(0,1fr);padding:10px 12px;row-gap:6px;min-height:112px}.burn-estimate input{min-height:38px!important;background:transparent!important;padding:0!important}.burn-estimate button{grid-column:1/-1;min-height:34px;border-top:1px solid rgba(181,75,0,.25)}
 	footer{padding:20px;min-height:88px}.toast{bottom:calc(18px + env(safe-area-inset-bottom));max-width:calc(100% - 24px);text-align:center}
 }
+
+/* Entry editing and original anime hero artwork */
+.login-visual { background:linear-gradient(180deg,rgba(20,86,160,.02),rgba(24,32,51,.72)),url('/power-hero.svg') center 38%/cover }
+.entry { grid-template-columns:auto minmax(0,1fr) auto auto }
+.entry-edit { width:36px;height:36px;display:grid;place-items:center;border:2px solid var(--ink);background:var(--lime);color:var(--ink);box-shadow:2px 2px 0 var(--ink) }
+.entry-edit:active { transform:translate(2px,2px);box-shadow:none }
+@media(max-width:620px){.entry{padding:14px 10px;grid-template-columns:auto minmax(0,1fr) auto auto;gap:8px}.entry-edit{width:40px;height:40px}.login-panel{position:relative;isolation:isolate;overflow:hidden}.login-panel::after{content:"";position:absolute;z-index:-1;top:0;right:-24px;width:190px;height:260px;background:url('/power-hero.svg') center 36%/cover;opacity:.22;clip-path:polygon(25% 0,100% 0,100% 100%,0 82%)}.login-panel> *{position:relative}}

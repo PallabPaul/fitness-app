@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 1200" role="img" aria-labelledby="title desc">
+  <title id="title">Power training scene</title>
+  <desc id="desc">An original martial artist powering up beneath a golden sky</desc>
+  <defs>
+    <radialGradient id="sky"><stop stop-color="#fff8a5"/><stop offset=".45" stop-color="#ffd52d"/><stop offset=".78" stop-color="#f47a1f"/><stop offset="1" stop-color="#1456a0"/></radialGradient>
+    <filter id="glow"><feGaussianBlur stdDeviation="18"/></filter>
+  </defs>
+  <rect width="900" height="1200" fill="url(#sky)"/>
+  <circle cx="450" cy="410" r="270" fill="#fffbd0" opacity=".75" filter="url(#glow)"/>
+  <g fill="#fff8a5"><path d="M30 350h300L95 410l184 54L20 420z"/><path d="M870 255H590l210 62-168 48 253-35z"/><path d="M10 610h300L76 665l190 60L0 680z"/><path d="M900 530H610l215 60-175 60 250-44z"/></g>
+  <g fill="#183d77"><path d="M0 900l145-190 98 96 112-185 118 181 101-126 111 115 102-160 133 219v350H0z"/><path d="M0 1020l190-130 132 83 145-112 150 93 142-113 161 119v240H0z" opacity=".82"/></g>
+  <g fill="none" stroke="#fff8a5" stroke-width="13" stroke-linecap="round"><path d="M450 95l-33 170 42-31 24 111"/><path d="M220 205l120 137-10-54 92 75"/><path d="M690 195L570 340l56-22-99 102"/><path d="M135 475l185 44-43-48 139 61"/><path d="M765 460l-177 52 45 23-139 65"/></g>
+  <path d="M450 250c-95 80-160 215-148 360 7 91 39 164 83 219h135c44-55 76-128 83-219 12-145-53-280-153-360z" fill="#fff" opacity=".58" filter="url(#glow)"/>
+  <g stroke="#182033" stroke-width="9" stroke-linejoin="round">
+    <path fill="#182033" d="M405 465l-47-75 70 31 12-98 42 84 62-58-25 106 52 37-89 12z"/>
+    <circle cx="454" cy="487" r="49" fill="#efb068"/>
+    <path fill="#f47a1f" d="M382 538c24-28 120-28 144 0l40 220-82 70h-72l-76-70z"/>
+    <path fill="#1456a0" d="M389 614h130l19 43-149 2z"/>
+    <path fill="#efb068" d="M365 553l-90 194 51 23 109-177zM541 553l86 194-51 23-106-177z"/>
+    <path fill="#1456a0" d="M412 803l-56 254 74 5 42-229 47 229 74-5-88-254z"/>
+    <path fill="#f47a1f" d="M348 1052h88l-4 61-137 10zM513 1052h87l54 71-137-10z"/>
+  </g>
+  <g fill="#fff"><circle cx="165" cy="180" r="9"/><circle cx="733" cy="350" r="8"/><circle cx="130" cy="760" r="7"/><circle cx="775" cy="700" r="10"/></g>
+</svg>
