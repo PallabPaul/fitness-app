@@ -3,7 +3,9 @@ import { Check, Circle, Flame, Plus, Target, Timer, Trash2 } from 'lucide-react'
 import {
   addDailyGoal,
   loadWellnessData,
+  removeFastingRecord,
   removeDailyGoal,
+  saveFastingRecord,
   saveFastingSettings,
   setGoalCompletion,
   type DailyGoal,
@@ -22,7 +24,8 @@ type Props = {
 const emptyData: WellnessData = {
   goals: [],
   completions: [],
-  fasting: { fastingHours: 16, eatingHours: 8, lastMealAt: null },
+  fasting: { fastingHours: 16, eatingHours: 8 },
+  fastingRecords: [],
 }
 
 const localDay = (date: Date) =>
@@ -45,7 +48,7 @@ export function WellnessPages({ view, selectedDay, onToast }: Props) {
 
   return view === 'goals'
     ? <GoalsPage data={data} setData={setData} selectedDay={selectedDay} onToast={onToast} />
-    : <FastingPage data={data} setData={setData} onToast={onToast} />
+    : <FastingPage key={localDay(selectedDay)} data={data} setData={setData} selectedDay={selectedDay} onToast={onToast} />
 }
 
 function GoalsPage({ data, setData, selectedDay, onToast }: {
@@ -145,15 +148,21 @@ function GoalsPage({ data, setData, selectedDay, onToast }: {
   </main>
 }
 
-function FastingPage({ data, setData, onToast }: {
+function FastingPage({ data, setData, selectedDay, onToast }: {
   data: WellnessData
   setData: React.Dispatch<React.SetStateAction<WellnessData>>
+  selectedDay: Date
   onToast: (message: string) => void
 }) {
   const [now, setNow] = useState(() => new Date())
-  const [windowDraft, setWindowDraft] = useState(data.fasting)
-  const [lastMealDraft, setLastMealDraft] = useState(
-    data.fasting.lastMealAt ? toDateTimeLocal(new Date(data.fasting.lastMealAt)) : toDateTimeLocal(new Date()),
+  const day = localDay(selectedDay)
+  const record = data.fastingRecords.find((item) => item.fastDate === day)
+  const [windowDraft, setWindowDraft] = useState({
+    fastingHours: record?.fastingHours ?? data.fasting.fastingHours,
+    eatingHours: record?.eatingHours ?? data.fasting.eatingHours,
+  })
+  const [lastMealDraft, setLastMealDraft] = useState(() =>
+    record ? toDateTimeLocal(new Date(record.lastMealAt)) : toDateTimeLocal(onSelectedDay(selectedDay)),
   )
 
   useEffect(() => {
@@ -161,18 +170,29 @@ function FastingPage({ data, setData, onToast }: {
     return () => window.clearInterval(timer)
   }, [])
 
-  const lastMeal = data.fasting.lastMealAt ? new Date(data.fasting.lastMealAt) : null
-  const target = lastMeal ? new Date(lastMeal.getTime() + data.fasting.fastingHours * 60 * 60 * 1000) : null
+  const activeWindow = record || data.fasting
+  const lastMeal = record ? new Date(record.lastMealAt) : null
+  const target = lastMeal ? new Date(lastMeal.getTime() + activeWindow.fastingHours * 60 * 60 * 1000) : null
   const remainingMs = target ? target.getTime() - now.getTime() : 0
   const elapsedMs = lastMeal ? Math.max(0, now.getTime() - lastMeal.getTime()) : 0
-  const durationMs = data.fasting.fastingHours * 60 * 60 * 1000
+  const durationMs = activeWindow.fastingHours * 60 * 60 * 1000
   const progress = lastMeal ? Math.min((elapsedMs / durationMs) * 100, 100) : 0
   const complete = Boolean(target && remainingMs <= 0)
 
-  async function persist(fasting: FastingSettings, message: string) {
+  async function persistWindow(fasting: FastingSettings, message: string) {
     try {
       await saveFastingSettings(fasting, data)
-      setData((current) => ({ ...current, fasting }))
+      const updatedRecord = record ? { ...record, ...fasting } : null
+      if (updatedRecord) {
+        await saveFastingRecord(updatedRecord, { ...data, fasting })
+      }
+      setData((current) => ({
+        ...current,
+        fasting,
+        fastingRecords: updatedRecord
+          ? [updatedRecord, ...current.fastingRecords.filter((item) => item.fastDate !== day)]
+          : current.fastingRecords,
+      }))
       setWindowDraft(fasting)
       onToast(message)
     } catch {
@@ -182,14 +202,42 @@ function FastingPage({ data, setData, onToast }: {
 
   function saveWindow(event: React.FormEvent) {
     event.preventDefault()
-    void persist(windowDraft, 'Fasting window updated')
+    void persistWindow(windowDraft, 'Fasting window updated')
   }
 
-  function setLastMeal(event: React.FormEvent) {
+  async function setLastMeal(event: React.FormEvent) {
     event.preventDefault()
     const value = new Date(lastMealDraft)
     if (Number.isNaN(value.getTime())) return
-    void persist({ ...data.fasting, lastMealAt: value.toISOString() }, 'Fast started')
+    const nextRecord = {
+      fastDate: day,
+      lastMealAt: value.toISOString(),
+      fastingHours: windowDraft.fastingHours,
+      eatingHours: windowDraft.eatingHours,
+    }
+    try {
+      await saveFastingRecord(nextRecord, data)
+      setData((current) => ({
+        ...current,
+        fastingRecords: [nextRecord, ...current.fastingRecords.filter((item) => item.fastDate !== day)],
+      }))
+      onToast(record ? 'Fast updated for this day' : 'Fast recorded for this day')
+    } catch {
+      onToast('Fast could not be saved')
+    }
+  }
+
+  async function clearFast() {
+    try {
+      await removeFastingRecord(day, data)
+      setData((current) => ({
+        ...current,
+        fastingRecords: current.fastingRecords.filter((item) => item.fastDate !== day),
+      }))
+      onToast('Fast cleared for this day')
+    } catch {
+      onToast('Fast could not be cleared')
+    }
   }
 
   function selectPreset(fastingHours: number) {
@@ -198,8 +246,8 @@ function FastingPage({ data, setData, onToast }: {
 
   return <main className="wellness-page fasting-page">
     <section className="wellness-hero fasting-hero">
-      <div><p className="eyebrow">Intermittent fasting</p><h1>Own the window.</h1><p>Set your last meal and Power Log will count down to your next eating window.</p></div>
-      <div className="fast-badge"><Flame size={23} /><strong>{data.fasting.fastingHours}:{data.fasting.eatingHours}</strong></div>
+      <div><p className="eyebrow">Intermittent fasting · {new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric' }).format(selectedDay)}</p><h1>Own the window.</h1><p>Set your last meal and Power Log will count down to your next eating window.</p></div>
+      <div className="fast-badge"><Flame size={23} /><strong>{activeWindow.fastingHours}:{activeWindow.eatingHours}</strong></div>
     </section>
 
     <section className="fast-grid">
@@ -210,9 +258,9 @@ function FastingPage({ data, setData, onToast }: {
         {lastMeal && <div className="fast-times"><span><small>Last meal</small><strong>{formatDateTime(lastMeal)}</strong></span><span><small>Next meal</small><strong>{target && formatDateTime(target)}</strong></span></div>}
         <form className="last-meal-form" onSubmit={setLastMeal}>
           <label>When was your last meal?<input type="datetime-local" value={lastMealDraft} max={toDateTimeLocal(new Date())} onChange={(event) => setLastMealDraft(event.target.value)} required /></label>
-          <div><button type="button" onClick={() => setLastMealDraft(toDateTimeLocal(new Date()))}>Use now</button><button type="submit">Start / update fast</button></div>
+          <div><button type="button" onClick={() => setLastMealDraft(toDateTimeLocal(onSelectedDay(selectedDay)))}>Use selected day</button><button type="submit">Save fast for this day</button></div>
         </form>
-        {lastMeal && <button className="clear-fast" onClick={() => void persist({ ...data.fasting, lastMealAt: null }, 'Fast cleared')}>Clear current fast</button>}
+        {lastMeal && <button className="clear-fast" onClick={() => void clearFast()}>Clear this day's fast</button>}
       </article>
 
       <article className="wellness-panel window-panel">
@@ -241,6 +289,13 @@ function formatDuration(milliseconds: number) {
 function toDateTimeLocal(date: Date) {
   const offset = date.getTimezoneOffset() * 60_000
   return new Date(date.getTime() - offset).toISOString().slice(0, 16)
+}
+
+function onSelectedDay(day: Date) {
+  const value = new Date(day)
+  const now = new Date()
+  value.setHours(now.getHours(), now.getMinutes(), 0, 0)
+  return value > now ? now : value
 }
 
 function formatDateTime(date: Date) {

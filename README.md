@@ -2,7 +2,7 @@
 
 A deliberately small personal tracker for calories and macros, running and weight training, and body weight. It uses React, Supabase, a Netlify Function, and OpenAI image analysis.
 
-Features include day-by-day history, searchable food presets with scalable serving sizes, exercise calorie estimates, personal calorie/macro goals, reusable daily habits with dated checkoffs, and a persistent intermittent-fasting countdown.
+Features include day-by-day history, searchable food presets with scalable serving sizes, exercise calorie estimates, personal calorie/macro goals, reusable daily habits with dated checkoffs, and date-specific intermittent-fasting history with a live countdown.
 
 Saved meals and workouts can be reopened from their pencil buttons, edited, and updated without creating duplicate entries. Trash buttons delete entries after confirmation.
 

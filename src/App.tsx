@@ -441,7 +441,7 @@ function App() {
           <button className={activeView === "goals" ? "active" : ""} onClick={() => setActiveView("goals")}><Target size={15} /><span>Goals</span></button>
           <button className={activeView === "fast" ? "active" : ""} onClick={() => setActiveView("fast")}><Timer size={15} /><span>Fast</span></button>
         </nav>
-        {activeView !== "fast" && <div className="day-nav">
+        <div className="day-nav">
           <button
             className="icon-button"
             onClick={() => moveDay(-1)}
@@ -470,7 +470,7 @@ function App() {
           >
             <ChevronRight size={18} />
           </button>
-        </div>}
+        </div>
         <div className="header-actions">
           {activeView === "log" && <button
             className="icon-button"
