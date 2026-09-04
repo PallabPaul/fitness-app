@@ -74,3 +74,51 @@ footer { background:var(--ink); color:#dbe2f0; border-top:4px solid var(--orange
 .entry-edit { background:var(--lime) }.entry-delete { background:#ff6b57 }
 .entry-edit:active,.entry-delete:active { transform:translate(2px,2px);box-shadow:none }
 @media(max-width:620px){.entry{padding:14px 8px;grid-template-columns:auto minmax(0,1fr) auto auto;gap:7px}.entry b{grid-column:2}.entry-edit,.entry-delete{width:40px;height:40px}.entry-delete{grid-column:4}.entry-icon{grid-row:1/3}.entry>div{grid-column:2/4}}
+
+/* Three-view navigation */
+.view-switch { display:flex;align-items:center;padding:3px;border:2px solid var(--ink);background:#0e3f79;box-shadow:3px 3px 0 var(--ink) }
+.view-switch button { min-width:72px;height:34px;display:inline-flex;align-items:center;justify-content:center;gap:6px;border:0;background:transparent;color:#dbeaff;font-size:11px;font-weight:700;text-transform:uppercase }
+.view-switch button.active { background:var(--lime);color:var(--ink) }
+
+/* Goals and fasting pages */
+.wellness-page { width:min(1040px,calc(100% - 40px));min-height:calc(100svh - 167px);margin:auto;padding:58px 0 80px }
+.wellness-loading { min-height:360px;display:grid;place-items:center;color:var(--green);font-weight:700;text-transform:uppercase }
+.wellness-hero { display:flex;align-items:flex-end;justify-content:space-between;gap:30px;margin-bottom:34px }
+.wellness-hero h1 { margin:0 0 7px;color:var(--orange);font:400 clamp(48px,6vw,76px)/.95 'Bangers',sans-serif;text-shadow:2px 2px 0 var(--ink);letter-spacing:0 }
+.wellness-hero>div>p:last-child { max-width:580px;margin:0;color:var(--ink);font-weight:600 }
+.goal-score { min-width:132px;min-height:90px;display:grid;place-content:center;text-align:center;border:2px solid var(--ink);background:var(--lime);box-shadow:5px 5px 0 var(--ink) }
+.goal-score strong { font:400 38px/1 'Bangers',sans-serif }.goal-score span { font-size:10px;font-weight:700;text-transform:uppercase }
+.wellness-panel { border:2px solid var(--ink);background:var(--white);box-shadow:6px 6px 0 var(--ink) }
+.wellness-panel-heading { min-height:91px;display:flex;align-items:center;gap:14px;padding:20px 24px;border-bottom:2px solid var(--ink);background:#eaf3ff }
+.wellness-panel-heading>span { width:42px;height:42px;display:grid;place-items:center;border:2px solid var(--ink);background:var(--orange) }
+.wellness-panel-heading h2 { margin:0;color:var(--green);font:400 31px/1 'Bangers',sans-serif;letter-spacing:0 }
+.habit-progress { height:12px;border-bottom:2px solid var(--ink);background:#fff }
+.habit-progress div { height:100%;background:var(--orange);transition:width .25s ease }
+.add-goal-form { display:grid;gap:8px;padding:22px 24px;border-bottom:2px solid var(--ink);background:#fff8da }
+.add-goal-form>label { font-size:11px;font-weight:700;text-transform:uppercase }.add-goal-form>div { display:grid;grid-template-columns:1fr auto }
+.add-goal-form input { min-width:0;height:48px;padding:0 14px;border:2px solid var(--ink);border-right:0;background:white;font-size:16px }
+.add-goal-form button,.window-form>button,.last-meal-form button { min-height:48px;display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:0 18px;border:2px solid var(--ink);background:var(--orange);color:var(--ink);font-weight:700;text-transform:uppercase }
+.habit-row { min-height:72px;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:14px;padding:12px 20px;border-bottom:2px solid #c7cede }
+.habit-row:last-child { border-bottom:0 }.habit-row.completed { background:#f3f8df }.habit-row.completed>strong { text-decoration:line-through;color:var(--muted) }
+.habit-check,.habit-delete { width:44px;height:44px;display:grid;place-items:center;border:2px solid var(--ink);color:var(--ink) }
+.habit-check { background:white }.habit-row.completed .habit-check { background:var(--lime) }.habit-delete { background:#ff6b57 }
+.wellness-empty { min-height:190px;display:grid;place-content:center;justify-items:center;gap:7px;color:var(--muted) }.wellness-empty svg { color:var(--orange) }.wellness-empty span { font-size:11px }
+
+.fast-badge { min-width:128px;min-height:78px;display:flex;align-items:center;justify-content:center;gap:10px;border:2px solid var(--ink);background:var(--orange);box-shadow:5px 5px 0 var(--ink) }.fast-badge strong { font:400 34px 'Bangers',sans-serif }
+.fast-grid { display:grid;grid-template-columns:1.35fr .85fr;gap:20px }.timer-panel { padding:30px }.window-panel { align-self:start }
+.timer-ring { --fast-progress:0deg;width:min(330px,80vw);aspect-ratio:1;margin:0 auto 28px;padding:17px;border:3px solid var(--ink);border-radius:50%;background:conic-gradient(var(--orange) var(--fast-progress),#dbe2f0 0);box-shadow:7px 7px 0 var(--ink) }
+.timer-ring>div { width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;border:3px solid var(--ink);border-radius:50%;background:var(--white);text-align:center }
+.timer-ring svg { color:var(--orange);margin-bottom:10px }.timer-ring strong { font:400 clamp(43px,6vw,63px)/1 'Bangers',sans-serif;color:var(--green);letter-spacing:0 }.timer-ring span { margin-top:6px;color:var(--muted);font-size:11px;font-weight:700;text-transform:uppercase }
+.fast-times { display:grid;grid-template-columns:1fr 1fr;margin-bottom:22px;border:2px solid var(--ink) }.fast-times>span { display:grid;gap:4px;padding:13px;background:#eaf3ff }.fast-times>span+span { border-left:2px solid var(--ink) }.fast-times small { color:var(--muted);font-size:9px;text-transform:uppercase }.fast-times strong { font-size:13px }
+.last-meal-form { display:grid;gap:10px }.last-meal-form label,.window-form label { display:grid;gap:6px;font-size:11px;font-weight:700;text-transform:uppercase }.last-meal-form input,.window-form input { width:100%;min-height:48px;padding:0 12px;border:2px solid var(--ink);background:white;font-size:16px }.last-meal-form>div { display:grid;grid-template-columns:.65fr 1.35fr;gap:8px }.last-meal-form>div button:first-child { background:var(--lime) }
+.clear-fast { width:100%;min-height:42px;margin-top:10px;border:0;background:transparent;color:#b43d2b;font-size:11px;font-weight:700;text-transform:uppercase }
+.fast-presets { display:grid;grid-template-columns:repeat(2,1fr);gap:8px;padding:20px }.fast-presets button { min-height:54px;border:2px solid var(--ink);background:white;color:var(--ink);font:400 24px 'Bangers',sans-serif;box-shadow:3px 3px 0 var(--ink) }.fast-presets button.active { background:var(--lime) }
+.window-form { display:grid;gap:16px;padding:0 20px 20px }.window-form>div { display:grid;grid-template-columns:1fr 1fr;gap:10px }.window-note { margin:0;padding:15px 20px;border-top:2px solid var(--ink);background:#fff8da;color:var(--muted);font-size:10px;line-height:1.45 }
+
+@media(max-width:850px){.wellness-page{padding-top:42px}.fast-grid{grid-template-columns:1fr}.window-panel{align-self:auto}}
+@media(max-width:620px){
+	.topbar{height:116px;flex-wrap:wrap;align-content:center;row-gap:8px}.view-switch{order:3;width:100%;height:40px}.view-switch button{flex:1;height:32px;min-width:0}.day-nav{order:1}.header-actions{order:2;margin-left:auto}.topbar:has(.view-switch button:nth-child(3).active) .header-actions{margin-left:auto}.topbar:has(.view-switch button:nth-child(3).active) .view-switch{margin-top:auto}
+	.wellness-page{width:calc(100% - 16px);min-height:calc(100svh - 204px);padding:30px 0 58px}.wellness-hero{align-items:flex-start;flex-direction:column;gap:18px;margin-bottom:26px}.wellness-hero h1{font-size:50px}.goal-score,.fast-badge{min-width:116px;min-height:67px;align-self:flex-end;margin-top:-8px}.goal-score strong{font-size:31px}
+	.wellness-panel{box-shadow:4px 4px 0 var(--ink)}.wellness-panel-heading{min-height:82px;padding:17px}.add-goal-form{padding:17px}.add-goal-form>div{grid-template-columns:minmax(0,1fr) 82px}.add-goal-form button{padding:0 8px}.habit-row{padding:10px;gap:9px}.habit-check,.habit-delete{width:42px;height:42px}.habit-row>strong{overflow-wrap:anywhere}
+	.fast-grid{gap:16px}.timer-panel{padding:22px 14px}.timer-ring{width:min(280px,76vw);margin-bottom:24px;padding:13px;box-shadow:5px 5px 0 var(--ink)}.timer-ring strong{font-size:47px}.fast-times strong{font-size:11px}.last-meal-form>div{grid-template-columns:1fr}.last-meal-form button{min-height:50px}.window-form>div{grid-template-columns:1fr 1fr}
+}

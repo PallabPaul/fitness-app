@@ -16,6 +16,8 @@ import {
   Settings2,
   Sparkles,
   Square,
+  Target,
+  Timer,
   Trash2,
   Utensils,
   X,
@@ -51,6 +53,7 @@ import {
   type Profile,
 } from "./fitness";
 import { foodPresets, type FoodPreset } from "./foods";
+import { WellnessPages } from "./WellnessPages";
 import "./App.css";
 
 export type Meal = {
@@ -82,6 +85,7 @@ type Modal =
   | "describeExercise"
   | "profile"
   | null;
+type AppView = "log" | "goals" | "fast";
 
 const localDay = (date: Date) =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
@@ -101,6 +105,7 @@ function App() {
   const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState(false);
   const [modal, setModal] = useState<Modal>(null);
+  const [activeView, setActiveView] = useState<AppView>("log");
   const [selectedDay, setSelectedDay] = useState(() => new Date());
   const [meals, setMeals] = useState<Meal[]>([]);
   const [workouts, setWorkouts] = useState<Workout[]>([]);
@@ -431,7 +436,12 @@ function App() {
           </span>{" "}
           POWER LOG
         </a>
-        <div className="day-nav">
+        <nav className="view-switch" aria-label="Power Log pages">
+          <button className={activeView === "log" ? "active" : ""} onClick={() => setActiveView("log")}><Activity size={15} /><span>Log</span></button>
+          <button className={activeView === "goals" ? "active" : ""} onClick={() => setActiveView("goals")}><Target size={15} /><span>Goals</span></button>
+          <button className={activeView === "fast" ? "active" : ""} onClick={() => setActiveView("fast")}><Timer size={15} /><span>Fast</span></button>
+        </nav>
+        {activeView !== "fast" && <div className="day-nav">
           <button
             className="icon-button"
             onClick={() => moveDay(-1)}
@@ -460,15 +470,15 @@ function App() {
           >
             <ChevronRight size={18} />
           </button>
-        </div>
+        </div>}
         <div className="header-actions">
-          <button
+          {activeView === "log" && <button
             className="icon-button"
             onClick={() => setModal("profile")}
             title="Edit goals"
           >
             <Settings2 size={18} />
-          </button>
+          </button>}
           <button
             className="icon-button"
             onClick={() => {
@@ -481,7 +491,7 @@ function App() {
           </button>
         </div>
       </header>
-      <main id="top" className="dashboard">
+      {activeView === "log" ? <main id="top" className="dashboard">
         <section className="intro">
           <div>
             <p className="eyebrow">
@@ -663,7 +673,7 @@ function App() {
             </div>
           </article>
         </section>
-      </main>
+      </main> : <WellnessPages view={activeView} selectedDay={selectedDay} onToast={setToast} />}
       <footer>
         <span>POWER LOG</span>
         <p>Every session raises your level.</p>

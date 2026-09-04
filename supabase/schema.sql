@@ -49,17 +49,45 @@ alter table public.profiles add column if not exists macro_protein integer check
 alter table public.profiles add column if not exists macro_carbs integer check (macro_carbs is null or macro_carbs >= 0);
 alter table public.profiles add column if not exists macro_fat integer check (macro_fat is null or macro_fat >= 0);
 
+create table if not exists public.daily_goals (
+  id uuid primary key default gen_random_uuid(),
+  title text not null check (char_length(title) between 1 and 120),
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.goal_completions (
+  goal_id uuid not null references public.daily_goals(id) on delete cascade,
+  completed_on date not null,
+  primary key (goal_id, completed_on)
+);
+
+create table if not exists public.fasting_settings (
+  id integer primary key default 1 check (id = 1),
+  fasting_hours integer not null default 16 check (fasting_hours between 1 and 23),
+  eating_hours integer not null default 8 check (eating_hours between 1 and 23),
+  last_meal_at timestamptz
+);
+
 alter table public.meals enable row level security;
 alter table public.workouts enable row level security;
 alter table public.weight_entries enable row level security;
 alter table public.profiles enable row level security;
+alter table public.daily_goals enable row level security;
+alter table public.goal_completions enable row level security;
+alter table public.fasting_settings enable row level security;
 
 drop policy if exists "personal meals" on public.meals;
 drop policy if exists "personal workouts" on public.workouts;
 drop policy if exists "personal weights" on public.weight_entries;
 drop policy if exists "personal profile" on public.profiles;
+drop policy if exists "personal daily goals" on public.daily_goals;
+drop policy if exists "personal goal completions" on public.goal_completions;
+drop policy if exists "personal fasting settings" on public.fasting_settings;
 
 create policy "personal meals" on public.meals for all to anon using (true) with check (true);
 create policy "personal workouts" on public.workouts for all to anon using (true) with check (true);
 create policy "personal weights" on public.weight_entries for all to anon using (true) with check (true);
 create policy "personal profile" on public.profiles for all to anon using (true) with check (true);
+create policy "personal daily goals" on public.daily_goals for all to anon using (true) with check (true);
+create policy "personal goal completions" on public.goal_completions for all to anon using (true) with check (true);
+create policy "personal fasting settings" on public.fasting_settings for all to anon using (true) with check (true);
