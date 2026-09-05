@@ -76,6 +76,18 @@ create table if not exists public.fasting_records (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.fasting_sessions (
+  id uuid primary key default gen_random_uuid(),
+  started_at timestamptz not null,
+  target_end_at timestamptz not null,
+  ended_at timestamptz,
+  fasting_hours integer not null check (fasting_hours between 1 and 23),
+  eating_hours integer not null check (eating_hours between 1 and 23),
+  created_at timestamptz not null default now(),
+  check (target_end_at > started_at),
+  check (ended_at is null or ended_at >= started_at)
+);
+
 alter table public.meals enable row level security;
 alter table public.workouts enable row level security;
 alter table public.weight_entries enable row level security;
@@ -84,6 +96,7 @@ alter table public.daily_goals enable row level security;
 alter table public.goal_completions enable row level security;
 alter table public.fasting_settings enable row level security;
 alter table public.fasting_records enable row level security;
+alter table public.fasting_sessions enable row level security;
 
 drop policy if exists "personal meals" on public.meals;
 drop policy if exists "personal workouts" on public.workouts;
@@ -93,6 +106,7 @@ drop policy if exists "personal daily goals" on public.daily_goals;
 drop policy if exists "personal goal completions" on public.goal_completions;
 drop policy if exists "personal fasting settings" on public.fasting_settings;
 drop policy if exists "personal fasting records" on public.fasting_records;
+drop policy if exists "personal fasting sessions" on public.fasting_sessions;
 
 create policy "personal meals" on public.meals for all to anon using (true) with check (true);
 create policy "personal workouts" on public.workouts for all to anon using (true) with check (true);
@@ -102,3 +116,4 @@ create policy "personal daily goals" on public.daily_goals for all to anon using
 create policy "personal goal completions" on public.goal_completions for all to anon using (true) with check (true);
 create policy "personal fasting settings" on public.fasting_settings for all to anon using (true) with check (true);
 create policy "personal fasting records" on public.fasting_records for all to anon using (true) with check (true);
+create policy "personal fasting sessions" on public.fasting_sessions for all to anon using (true) with check (true);

@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
-import { Check, Circle, Flame, Plus, Target, Timer, Trash2 } from 'lucide-react'
+import { Check, Circle, Flame, Pencil, Play, Plus, Target, Timer, Trash2 } from 'lucide-react'
 import {
   addDailyGoal,
   loadWellnessData,
-  removeFastingRecord,
+  removeFastingSession,
   removeDailyGoal,
-  saveFastingRecord,
+  saveFastingSession,
   saveFastingSettings,
   setGoalCompletion,
   type DailyGoal,
@@ -25,7 +25,7 @@ const emptyData: WellnessData = {
   goals: [],
   completions: [],
   fasting: { fastingHours: 16, eatingHours: 8 },
-  fastingRecords: [],
+  fastingSessions: [],
 }
 
 const localDay = (date: Date) =>
@@ -155,43 +155,60 @@ function FastingPage({ data, setData, selectedDay, onToast }: {
   onToast: (message: string) => void
 }) {
   const [now, setNow] = useState(() => new Date())
-  const day = localDay(selectedDay)
-  const record = data.fastingRecords.find((item) => item.fastDate === day)
+  const dayStart = new Date(selectedDay)
+  dayStart.setHours(0, 0, 0, 0)
+  const dayEnd = new Date(selectedDay)
+  dayEnd.setHours(23, 59, 59, 999)
+  const session = [...data.fastingSessions]
+    .sort((left, right) => new Date(right.startedAt).getTime() - new Date(left.startedAt).getTime())
+    .find((item) => {
+      const start = new Date(item.startedAt)
+      const end = item.endedAt ? new Date(item.endedAt) : now
+      return start <= dayEnd && end >= dayStart
+    })
   const [windowDraft, setWindowDraft] = useState({
-    fastingHours: record?.fastingHours ?? data.fasting.fastingHours,
-    eatingHours: record?.eatingHours ?? data.fasting.eatingHours,
+    fastingHours: session?.fastingHours ?? data.fasting.fastingHours,
+    eatingHours: session?.eatingHours ?? data.fasting.eatingHours,
   })
-  const [lastMealDraft, setLastMealDraft] = useState(() =>
-    record ? toDateTimeLocal(new Date(record.lastMealAt)) : toDateTimeLocal(onSelectedDay(selectedDay)),
-  )
+  const [startDraft, setStartDraft] = useState(() => toDateTimeLocal(session ? new Date(session.startedAt) : onSelectedDay(selectedDay)))
+  const [targetDraft, setTargetDraft] = useState(() => toDateTimeLocal(session ? new Date(session.targetEndAt) : new Date(onSelectedDay(selectedDay).getTime() + data.fasting.fastingHours * 3_600_000)))
+  const [endDraft, setEndDraft] = useState(() => session?.endedAt ? toDateTimeLocal(new Date(session.endedAt)) : '')
+  const [editingTimes, setEditingTimes] = useState(false)
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 1000)
     return () => window.clearInterval(timer)
   }, [])
 
-  const activeWindow = record || data.fasting
-  const lastMeal = record ? new Date(record.lastMealAt) : null
-  const target = lastMeal ? new Date(lastMeal.getTime() + activeWindow.fastingHours * 60 * 60 * 1000) : null
-  const remainingMs = target ? target.getTime() - now.getTime() : 0
-  const elapsedMs = lastMeal ? Math.max(0, now.getTime() - lastMeal.getTime()) : 0
+  const activeWindow = session || data.fasting
+  const startedAt = session ? new Date(session.startedAt) : null
+  const target = session ? new Date(session.targetEndAt) : null
+  const endedAt = session?.endedAt ? new Date(session.endedAt) : null
+  const timerReference = endedAt || now
+  const remainingMs = target ? target.getTime() - timerReference.getTime() : 0
+  const elapsedMs = startedAt ? Math.max(0, timerReference.getTime() - startedAt.getTime()) : 0
   const durationMs = activeWindow.fastingHours * 60 * 60 * 1000
-  const progress = lastMeal ? Math.min((elapsedMs / durationMs) * 100, 100) : 0
-  const complete = Boolean(target && remainingMs <= 0)
+  const progress = startedAt ? Math.min((elapsedMs / durationMs) * 100, 100) : 0
+  const goalReached = Boolean(target && remainingMs <= 0)
+  const active = Boolean(session && !session.endedAt)
 
   async function persistWindow(fasting: FastingSettings, message: string) {
     try {
       await saveFastingSettings(fasting, data)
-      const updatedRecord = record ? { ...record, ...fasting } : null
-      if (updatedRecord) {
-        await saveFastingRecord(updatedRecord, { ...data, fasting })
+      const updatedSession = session ? {
+        ...session,
+        ...fasting,
+        targetEndAt: new Date(new Date(session.startedAt).getTime() + fasting.fastingHours * 3_600_000).toISOString(),
+      } : null
+      if (updatedSession) {
+        await saveFastingSession(updatedSession, { ...data, fasting })
       }
       setData((current) => ({
         ...current,
         fasting,
-        fastingRecords: updatedRecord
-          ? [updatedRecord, ...current.fastingRecords.filter((item) => item.fastDate !== day)]
-          : current.fastingRecords,
+        fastingSessions: updatedSession
+          ? [updatedSession, ...current.fastingSessions.filter((item) => item.id !== updatedSession.id)]
+          : current.fastingSessions,
       }))
       setWindowDraft(fasting)
       onToast(message)
@@ -205,38 +222,92 @@ function FastingPage({ data, setData, selectedDay, onToast }: {
     void persistWindow(windowDraft, 'Fasting window updated')
   }
 
-  async function setLastMeal(event: React.FormEvent) {
+  async function startFast(event: React.FormEvent) {
     event.preventDefault()
-    const value = new Date(lastMealDraft)
-    if (Number.isNaN(value.getTime())) return
-    const nextRecord = {
-      fastDate: day,
-      lastMealAt: value.toISOString(),
+    if (data.fastingSessions.some((item) => !item.endedAt)) {
+      onToast('End your active fast before starting another')
+      return
+    }
+    const start = new Date(startDraft)
+    if (Number.isNaN(start.getTime())) return
+    const nextSession = {
+      id: crypto.randomUUID(),
+      startedAt: start.toISOString(),
+      targetEndAt: new Date(start.getTime() + windowDraft.fastingHours * 3_600_000).toISOString(),
+      endedAt: null,
       fastingHours: windowDraft.fastingHours,
       eatingHours: windowDraft.eatingHours,
     }
     try {
-      await saveFastingRecord(nextRecord, data)
+      await saveFastingSession(nextSession, data)
       setData((current) => ({
         ...current,
-        fastingRecords: [nextRecord, ...current.fastingRecords.filter((item) => item.fastDate !== day)],
+        fastingSessions: [nextSession, ...current.fastingSessions],
       }))
-      onToast(record ? 'Fast updated for this day' : 'Fast recorded for this day')
+      onToast('Fast started')
     } catch {
       onToast('Fast could not be saved')
     }
   }
 
-  async function clearFast() {
+  async function endFast() {
+    if (!session) return
+    const updated = { ...session, endedAt: new Date().toISOString() }
     try {
-      await removeFastingRecord(day, data)
+      await saveFastingSession(updated, data)
       setData((current) => ({
         ...current,
-        fastingRecords: current.fastingRecords.filter((item) => item.fastDate !== day),
+        fastingSessions: [updated, ...current.fastingSessions.filter((item) => item.id !== session.id)],
       }))
-      onToast('Fast cleared for this day')
+      onToast('Fast completed')
     } catch {
-      onToast('Fast could not be cleared')
+      onToast('Fast could not be ended')
+    }
+  }
+
+  async function saveTimes(event: React.FormEvent) {
+    event.preventDefault()
+    if (!session) return
+    const start = new Date(startDraft)
+    const targetEnd = new Date(targetDraft)
+    const end = endDraft ? new Date(endDraft) : null
+    if (Number.isNaN(start.getTime()) || Number.isNaN(targetEnd.getTime()) || targetEnd <= start || (end && end < start)) {
+      onToast('Check the session times')
+      return
+    }
+    const fastingHours = Math.max(1, Math.min(23, Math.round((targetEnd.getTime() - start.getTime()) / 3_600_000)))
+    const updated = {
+      ...session,
+      startedAt: start.toISOString(),
+      targetEndAt: targetEnd.toISOString(),
+      endedAt: end?.toISOString() || null,
+      fastingHours,
+      eatingHours: 24 - fastingHours,
+    }
+    try {
+      await saveFastingSession(updated, data)
+      setData((current) => ({
+        ...current,
+        fastingSessions: [updated, ...current.fastingSessions.filter((item) => item.id !== session.id)],
+      }))
+      setEditingTimes(false)
+      onToast('Fast times updated')
+    } catch {
+      onToast('Fast could not be updated')
+    }
+  }
+
+  async function deleteSession() {
+    if (!session || !window.confirm('Delete this fasting session?')) return
+    try {
+      await removeFastingSession(session.id, data)
+      setData((current) => ({
+        ...current,
+        fastingSessions: current.fastingSessions.filter((item) => item.id !== session.id),
+      }))
+      onToast('Fasting session deleted')
+    } catch {
+      onToast('Fast could not be deleted')
     }
   }
 
@@ -246,21 +317,27 @@ function FastingPage({ data, setData, selectedDay, onToast }: {
 
   return <main className="wellness-page fasting-page">
     <section className="wellness-hero fasting-hero">
-      <div><p className="eyebrow">Intermittent fasting · {new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric' }).format(selectedDay)}</p><h1>Own the window.</h1><p>Set your last meal and Power Log will count down to your next eating window.</p></div>
+      <div><p className="eyebrow">Intermittent fasting · {new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric' }).format(selectedDay)}</p><h1>Own the window.</h1><p>One session continues across midnight. Move between dates to review every day it spans.</p></div>
       <div className="fast-badge"><Flame size={23} /><strong>{activeWindow.fastingHours}:{activeWindow.eatingHours}</strong></div>
     </section>
 
     <section className="fast-grid">
       <article className="wellness-panel timer-panel">
         <div className="timer-ring" style={{ '--fast-progress': `${progress * 3.6}deg` } as React.CSSProperties}>
-          <div><Timer size={27} /><strong>{lastMeal ? (complete ? 'Complete' : formatDuration(remainingMs)) : '--:--:--'}</strong><span>{lastMeal ? (complete ? 'Eating window is open' : 'until your next meal') : 'Set your last meal to begin'}</span></div>
+          <div><Timer size={27} /><strong>{session ? (endedAt ? formatDuration(elapsedMs) : goalReached ? formatDuration(elapsedMs) : formatDuration(remainingMs)) : '--:--:--'}</strong><span>{session ? (endedAt ? 'total fasting time' : goalReached ? 'fasting · goal reached' : 'remaining to goal') : 'Ready when you are'}</span></div>
         </div>
-        {lastMeal && <div className="fast-times"><span><small>Last meal</small><strong>{formatDateTime(lastMeal)}</strong></span><span><small>Next meal</small><strong>{target && formatDateTime(target)}</strong></span></div>}
-        <form className="last-meal-form" onSubmit={setLastMeal}>
-          <label>When was your last meal?<input type="datetime-local" value={lastMealDraft} max={toDateTimeLocal(new Date())} onChange={(event) => setLastMealDraft(event.target.value)} required /></label>
-          <div><button type="button" onClick={() => setLastMealDraft(toDateTimeLocal(onSelectedDay(selectedDay)))}>Use selected day</button><button type="submit">Save fast for this day</button></div>
-        </form>
-        {lastMeal && <button className="clear-fast" onClick={() => void clearFast()}>Clear this day's fast</button>}
+        {session && <div className="fast-times"><span><small>Started</small><strong>{startedAt && formatDateTime(startedAt)}</strong></span><span><small>Goal</small><strong>{target && formatDateTime(target)}</strong></span></div>}
+        {!session && <form className="last-meal-form fast-start-form" onSubmit={startFast}>
+          <label>Fast starts<input type="datetime-local" value={startDraft} max={toDateTimeLocal(new Date())} onChange={(event) => setStartDraft(event.target.value)} required /></label>
+          <div><button type="button" onClick={() => setStartDraft(toDateTimeLocal(onSelectedDay(selectedDay)))}>{localDay(selectedDay) === localDay(new Date()) ? 'Start now' : 'Use selected day'}</button><button type="submit"><Play size={17} /> Start {windowDraft.fastingHours}-hour fast</button></div>
+        </form>}
+        {active && <div className="fast-actions"><button onClick={() => setEditingTimes(true)}><Pencil size={16} /> Edit times</button><button className="end-fast" onClick={() => void endFast()}>End fast now</button></div>}
+        {session && !active && <div className="fast-actions"><button onClick={() => setEditingTimes(true)}><Pencil size={16} /> Edit session</button><button className="delete-fast" onClick={() => void deleteSession()}><Trash2 size={16} /> Delete</button></div>}
+        {session && editingTimes && <form className="session-edit-form" onSubmit={saveTimes}>
+          <div><label>Start time<input type="datetime-local" value={startDraft} onChange={(event) => setStartDraft(event.target.value)} required /></label><label>Goal time<input type="datetime-local" value={targetDraft} onChange={(event) => setTargetDraft(event.target.value)} required /></label></div>
+          {endedAt && <label>Actual end time<input type="datetime-local" value={endDraft} onChange={(event) => setEndDraft(event.target.value)} required /></label>}
+          <div className="session-edit-actions"><button type="button" onClick={() => setEditingTimes(false)}>Cancel</button><button type="submit">Save changes</button></div>
+        </form>}
       </article>
 
       <article className="wellness-panel window-panel">

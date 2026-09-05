@@ -16,16 +16,18 @@ export type FastingSettings = {
   eatingHours: number
 }
 
-export type FastingRecord = FastingSettings & {
-  fastDate: string
-  lastMealAt: string
+export type FastingSession = FastingSettings & {
+  id: string
+  startedAt: string
+  targetEndAt: string
+  endedAt: string | null
 }
 
 export type WellnessData = {
   goals: DailyGoal[]
   completions: GoalCompletion[]
   fasting: FastingSettings
-  fastingRecords: FastingRecord[]
+  fastingSessions: FastingSession[]
 }
 
 const storageKey = 'power-log-wellness'
@@ -41,18 +43,25 @@ function loadLocal(): WellnessData {
   const saved = localStorage.getItem(storageKey)
   const data = saved ? JSON.parse(saved) as Partial<WellnessData> & {
     fasting?: FastingSettings & { lastMealAt?: string | null }
+    fastingRecords?: Array<FastingSettings & { fastDate: string; lastMealAt: string }>
   } : {}
-  const legacyRecord = data.fasting?.lastMealAt ? [{
-    fastDate: data.fasting.lastMealAt.slice(0, 10),
-    lastMealAt: data.fasting.lastMealAt,
-    fastingHours: data.fasting.fastingHours,
-    eatingHours: data.fasting.eatingHours,
-  }] : []
+  const legacyRecords = data.fastingRecords || (data.fasting?.lastMealAt ? [{
+    fastDate: data.fasting.lastMealAt.slice(0, 10), lastMealAt: data.fasting.lastMealAt,
+    fastingHours: data.fasting.fastingHours, eatingHours: data.fasting.eatingHours,
+  }] : [])
+  const migratedSessions = legacyRecords.map((record) => ({
+    id: crypto.randomUUID(),
+    startedAt: record.lastMealAt,
+    targetEndAt: new Date(new Date(record.lastMealAt).getTime() + record.fastingHours * 3_600_000).toISOString(),
+    endedAt: new Date(new Date(record.lastMealAt).getTime() + record.fastingHours * 3_600_000).toISOString(),
+    fastingHours: record.fastingHours,
+    eatingHours: record.eatingHours,
+  }))
   return {
     goals: data.goals || [],
     completions: data.completions || [],
     fasting: { ...defaultFasting, ...data.fasting },
-    fastingRecords: data.fastingRecords || legacyRecord,
+    fastingSessions: data.fastingSessions || migratedSessions,
   }
 }
 
@@ -62,13 +71,13 @@ function saveLocal(data: WellnessData) {
 
 export async function loadWellnessData(): Promise<WellnessData> {
   if (!supabase) return loadLocal()
-  const [goalsResult, completionsResult, fastingResult, recordsResult] = await Promise.all([
+  const [goalsResult, completionsResult, fastingResult, sessionsResult] = await Promise.all([
     supabase.from('daily_goals').select('*').order('created_at'),
     supabase.from('goal_completions').select('*'),
     supabase.from('fasting_settings').select('*').eq('id', 1).maybeSingle(),
-    supabase.from('fasting_records').select('*').order('fast_date', { ascending: false }),
+    supabase.from('fasting_sessions').select('*').order('started_at', { ascending: false }),
   ])
-  const error = goalsResult.error || completionsResult.error || fastingResult.error || recordsResult.error
+  const error = goalsResult.error || completionsResult.error || fastingResult.error || sessionsResult.error
   if (error) throw error
   return {
     goals: (goalsResult.data || []).map((row) => ({
@@ -84,9 +93,11 @@ export async function loadWellnessData(): Promise<WellnessData> {
       fastingHours: fastingResult.data.fasting_hours,
       eatingHours: fastingResult.data.eating_hours,
     } : defaultFasting,
-    fastingRecords: (recordsResult.data || []).map((row) => ({
-      fastDate: row.fast_date,
-      lastMealAt: row.last_meal_at,
+    fastingSessions: (sessionsResult.data || []).map((row) => ({
+      id: row.id,
+      startedAt: row.started_at,
+      targetEndAt: row.target_end_at,
+      endedAt: row.ended_at,
       fastingHours: row.fasting_hours,
       eatingHours: row.eating_hours,
     })),
@@ -140,23 +151,25 @@ export async function saveFastingSettings(fasting: FastingSettings, current: Wel
   if (error) throw error
 }
 
-export async function saveFastingRecord(record: FastingRecord, current: WellnessData) {
-  const records = [record, ...current.fastingRecords.filter((item) => item.fastDate !== record.fastDate)]
-  if (!supabase) return saveLocal({ ...current, fastingRecords: records })
-  const { error } = await supabase.from('fasting_records').upsert({
-    fast_date: record.fastDate,
-    last_meal_at: record.lastMealAt,
-    fasting_hours: record.fastingHours,
-    eating_hours: record.eatingHours,
+export async function saveFastingSession(session: FastingSession, current: WellnessData) {
+  const sessions = [session, ...current.fastingSessions.filter((item) => item.id !== session.id)]
+  if (!supabase) return saveLocal({ ...current, fastingSessions: sessions })
+  const { error } = await supabase.from('fasting_sessions').upsert({
+    id: session.id,
+    started_at: session.startedAt,
+    target_end_at: session.targetEndAt,
+    ended_at: session.endedAt,
+    fasting_hours: session.fastingHours,
+    eating_hours: session.eatingHours,
   })
   if (error) throw error
 }
 
-export async function removeFastingRecord(fastDate: string, current: WellnessData) {
+export async function removeFastingSession(id: string, current: WellnessData) {
   if (!supabase) return saveLocal({
     ...current,
-    fastingRecords: current.fastingRecords.filter((item) => item.fastDate !== fastDate),
+    fastingSessions: current.fastingSessions.filter((item) => item.id !== id),
   })
-  const { error } = await supabase.from('fasting_records').delete().eq('fast_date', fastDate)
+  const { error } = await supabase.from('fasting_sessions').delete().eq('id', id)
   if (error) throw error
 }
